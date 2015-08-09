@@ -1,0 +1,127 @@
+#!/usr/local/bin/python
+# coding: utf-8
+
+from django.db import models
+
+from datetime import datetime
+from django.template.defaultfilters import slugify
+from django.core.urlresolvers import reverse
+
+from django.utils.translation import ugettext as _
+from mptt.fields import TreeForeignKey
+from mptt.managers import TreeManager
+from mptt.models import MPTTModel
+
+#if Internationalization
+from i18n_model.models import I18nModel
+
+class PageManager(TreeManager):
+    use_for_related_fields = True
+
+    def public(self):
+        return super(PageManager, self).filter(is_public=True) 
+
+    def public_root_nodes(self):
+        return super(PageManager, self).root_nodes().filter(is_public=True)
+
+
+class Page(MPTTModel):
+    title = models.CharField(max_length=100, blank=False, verbose_name=_('title'), 
+        help_text=_('Page title'))
+    slug = models.CharField(_(u'slug'), max_length=150, blank=True)
+    is_public = models.BooleanField(
+        _('is public'),
+        default=True,
+        help_text=_('Only public albums will be displayed in the default views.')
+    )
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        verbose_name=_('parent page'),
+        related_name='children'
+    )
+    url = models.CharField(_(u'url'), max_length=150, blank=True)
+    description = models.TextField(_('description'), blank=True)
+    date_added = models.DateTimeField(_('date added'), auto_now_add=True)
+    
+    objects = PageManager()
+    
+    def __unicode__(self):
+        return self.title + ' ' + self.slug
+
+    def save(self, *args, **kwargs):
+        # Raise on circular reference
+        parent = self.parent
+        while parent is not None:
+            if parent == self:
+                raise RuntimeError, "Circular references not allowed"
+            parent = parent.parent
+
+        super(Page, self).save(*args, **kwargs)
+    
+    def get_page_tree(self):
+        tree = [self.slug]
+        if self.parent:
+            tree = self.parent.get_page_tree() + tree
+        return tree
+
+    @property
+    def children(self):
+        return self.page_set.all().order_by('title')
+
+    def get_absolute_url(self):
+        return reverse('page_object_list', kwargs={'page_slug': self.slug})
+
+class BlockManager(models.Manager):
+    use_for_related_fields = True
+
+    def public(self):
+        return super(BlockManager, self).filter(moderated=True)
+
+class Block(models.Model):
+    name = models.CharField(max_length=100, blank=False, verbose_name=_('name'), 
+        help_text=_('Block name'))
+    slug = models.CharField(_(u'slug'), max_length=150, blank=True)
+    page = models.ForeignKey('Page')
+    view_title = models.CharField(max_length=100, blank=False, verbose_name=_('view name'), 
+        help_text=_('Block view name'))
+    title = models.CharField(max_length=100, blank=False, verbose_name=_('title'), 
+        help_text=_('Page title'))
+    body = models.TextField(blank=False, verbose_name=_('content'))
+    extra_content = models.TextField(blank=True, verbose_name=_('extra content'))
+    #TODO: use django-filer for image
+    image = models.ImageField('Image', upload_to='images/pagers/', blank=True, null=True)
+    caption = models.CharField(max_length=100, blank=True, verbose_name=_('caption'), 
+        help_text=_('Image caption'), null=True)
+    attachment = models.FileField('File', upload_to='files/pagers/', blank=True, null=True)
+    created_on = models.DateTimeField(_('date added'), auto_now_add=True)
+    moderated = models.BooleanField(verbose_name=_('moderated'))
+    page = TreeForeignKey(
+        Page,
+        verbose_name=_('page'),
+        related_name='pages'
+    )
+    
+    objects = BlockManager()
+
+    class Meta:
+        ordering = ['-created_on']
+        verbose_name = _('block')
+        verbose_name_plural = _('blocks')
+        
+    def save(self):
+        if not self.created_on:
+            self.created_on = datetime.now()
+        if not self.moderated:
+            self.moderated = False
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super(Block, self).save()
+        
+    def __unicode__(self):
+        return self.name + ' ' + self.created_on.strftime('%d/%m/%Y')
+
+class BlockI18N(I18nModel):
+    class Meta:
+        translation_fields = ('title', 'body', 'extra_content', 'caption')
