@@ -2,6 +2,6 @@
 
 from django.conf.urls.defaults import *
 
-urlpatterns = patterns('', 
+urlpatterns = [ 
     url(r'^$', 'pager', name='pagers'),
-)
+]

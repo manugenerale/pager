@@ -3,6 +3,7 @@
 
 from django import template
 from django.template.defaultfilters import safe
+from django.utils.safestring import mark_safe
 from django.utils import translation
 from ..models import Page, Block
 
@@ -29,12 +30,12 @@ def show_block_title(block_slug):
     try:
         block = Block.objects.get(slug=block_slug)
         ln = translation.get_language()
-        if ln:
+        if ln != "fr":
             block = block.translations.get_by_lang(ln)
         result = block.title
     except:
         pass
-    return "%s" % result
+    return safe("%s" % result)
 
 @register.simple_tag()
 def show_block_content(block_slug):
@@ -47,12 +48,12 @@ def show_block_content(block_slug):
     try:
         block = Block.objects.get(slug=block_slug)
         ln = translation.get_language()
-        if ln:
+        if ln != "fr":
             block = block.translations.get_by_lang(ln)
         result = block.body
     except:
         pass
-    return "%s" % result
+    return safe("%s" % result)
 
 @register.simple_tag()
 def show_block_extra_content(block_slug):
@@ -65,12 +66,12 @@ def show_block_extra_content(block_slug):
     try:
         block = Block.objects.get(slug=block_slug)
         ln = translation.get_language()
-        if ln:
+        if ln != "fr":
             block = block.translations.get_by_lang(ln)
-            result = block.extra_content
+        result = block.extra_content
     except:
         pass
-    return "%s" % result
+    return safe("%s" % result)
 
 @register.simple_tag()
 def show_block_image(block_slug):
@@ -87,4 +88,38 @@ def show_block_image(block_slug):
         result_title = block.title
     except:
         pass
-    return "<img src='/static/%s' alt='%s' />" % (result, result_title)
+    return safe("<img src='/static/%s' alt='%s' />" % (result, result_title))
+
+@register.simple_tag()
+def show_block_image_url(block_slug):
+    """ Utilisation simple :
+    Syntax ::
+    {% load pager %}
+    {% show_block_content 'block_slug' %}
+    """
+    result = 'pager/images/default.png'
+    result_title = 'Lorem Ipsum'
+    try:
+        block = Block.objects.get(slug=block_slug)
+        result = block.image
+        result_title = block.title
+    except:
+        pass
+    return "/static/%s" % (result)
+
+@register.simple_tag()
+def show_block_file_url(block_slug):
+    """ Utilisation simple :
+    Syntax ::
+    {% load pager %}
+    {% show_block_file_url 'block_slug' %}
+    """
+    result = 'pager/images/default.png'
+    result_title = 'Lorem Ipsum'
+    try:
+        block = Block.objects.get(slug=block_slug)
+        result = block.attachment
+        result_title = block.title
+    except:
+        pass
+    return "/static/%s" % (result)

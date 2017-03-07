@@ -80,23 +80,13 @@ class BlockManager(models.Manager):
         return super(BlockManager, self).filter(moderated=True)
 
 class Block(models.Model):
+    page = models.ForeignKey('Page')
     name = models.CharField(max_length=100, blank=False, verbose_name=_('name'), 
         help_text=_('Block name'))
     slug = models.CharField(_(u'slug'), max_length=150, blank=True)
-    page = models.ForeignKey('Page')
-    view_title = models.CharField(max_length=100, blank=False, verbose_name=_('view name'), 
-        help_text=_('Block view name'))
-    title = models.CharField(max_length=100, blank=False, verbose_name=_('title'), 
-        help_text=_('Page title'))
     body = models.TextField(blank=False, verbose_name=_('content'))
-    extra_content = models.TextField(blank=True, verbose_name=_('extra content'))
-    #TODO: use django-filer for image
-    image = models.ImageField('Image', upload_to='images/pagers/', blank=True, null=True)
-    caption = models.CharField(max_length=100, blank=True, verbose_name=_('caption'), 
-        help_text=_('Image caption'), null=True)
-    attachment = models.FileField('File', upload_to='files/pagers/', blank=True, null=True)
     created_on = models.DateTimeField(_('date added'), auto_now_add=True)
-    moderated = models.BooleanField(verbose_name=_('moderated'))
+    moderated = models.BooleanField(verbose_name=_('moderated'), default=False)
     page = TreeForeignKey(
         Page,
         verbose_name=_('page'),
@@ -120,7 +110,40 @@ class Block(models.Model):
         super(Block, self).save()
         
     def __unicode__(self):
-        return self.name + ' ' + self.created_on.strftime('%d/%m/%Y')
+        return self.page.title + ' ' + self.name + ' ' + self.created_on.strftime('%d/%m/%Y')
+
+class BlockMedia(models.Model):
+    block = models.ForeignKey('Block', null=True, blank=True)
+    attachment = models.FileField('File', upload_to='files/pagers/', blank=True, null=True)
+    caption = models.CharField(max_length=100, blank=True, verbose_name=_('caption')) 
+    created_on = models.DateTimeField(_('date added'), auto_now_add=True)
+     
+    def save(self):
+        if not self.created_on:
+            self.created_on = datetime.now()
+        super(BlockMedia, self).save()
+        
+    def __unicode__(self):
+        return str(self.attachment) + ' ' + self.created_on.strftime('%d/%m/%Y')
+
+    def show_url(self):
+        if self.attachment:
+            return '<a href="/static/%s" target="_blank">Voir l\'image</a>' % (self.attachment)
+        else:
+            return u'Pas d\image'
+    show_url.allow_tags = True
+
+    def show_attachment(self):
+        if self.attachment:
+            return '<img src="/static/'+str(self.attachment)+'" width=50% />'
+        else:
+            return '<img src="/static/" width=50% />'
+    show_attachment.allow_tags = True
+
+    class Meta:
+        ordering = ['-created_on']
+        verbose_name = _('media')
+        verbose_name_plural = _('medias')
 
 class BlockI18N(I18nModel):
     class Meta:

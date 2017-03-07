@@ -1,24 +1,37 @@
 # -*- coding: utf-8 -*-
 
+from django.utils.safestring import mark_safe
 from django.contrib import admin
 from django import forms
 from django.db import models
 from mptt.admin import MPTTModelAdmin
-from models import Page, Block
+from models import *
 
-#class InlineI18nAdmin(admin.TabularInline):
-#    extra = 1
-#    model = BlockI18N
-#    formfield_overrides = {
-#        models.TextField: {'widget': forms.Textarea(attrs={'rows':3,'cols':30})}
-#    }
+class InlineI18nAdmin(admin.TabularInline):
+    extra = 1
+    model = BlockI18N
+    formfield_overrides = {
+        models.TextField: {'widget': forms.Textarea(attrs={'rows':3,'cols':30})}
+    }
+
+class BlockMediaAdmin(admin.ModelAdmin):
+    list_display = ('show_attachment', 'show_url')
+
+class InlineBlockMediaAdmin(admin.TabularInline):
+    extra = 1
+    model = BlockMedia
+    ordering = ('-created_on',)
 
 class BlockAdmin(admin.ModelAdmin):
-    list_display = ('page', 'name', 'slug', 'title', 'body')
+    list_display = ('page', 'name', 'slug', 'get_content')
     list_filter = ['page']
-    #inlines = [InlineI18nAdmin]
+    inlines = [InlineBlockMediaAdmin, InlineI18nAdmin]
     class Media:
-        js = ['/static/grappelli/tinymce/jscripts/tiny_mce/tiny_mce.js', '/static/grappelli/tinymce_setup/tinymce_setup.js',]
+        js = ['/static/tinymce/js/tinymce/tinymce.min.js', '/static/tinymce/js/tinymce/jquery.tinymce.init.js']
+
+    def get_content(self, obj):
+        return mark_safe(obj.content)
+
 
 class InlineBlockAdmin(admin.TabularInline):
     extra = 1
@@ -32,12 +45,14 @@ class InlineBlockAdmin(admin.TabularInline):
 class PageAdmin(MPTTModelAdmin):
     change_list_template = 'pager/admin/change_list.html'
     inlines = [InlineBlockAdmin]
-    list_display = ('title', 'is_public')
-    list_editable = ('is_public',)
+    ordering = ('title',)
+    list_display = ('id', 'title', 'parent', 'url')
+    list_editable = ('title', 'parent', 'url')
     list_filter = ['is_public']
     prepopulated_fields = {'slug': ('title',)}
     search_fields = ('title', 'slug', 'description')
 
 admin.site.register(Block, BlockAdmin)
+admin.site.register(BlockMedia, BlockMediaAdmin)
 admin.site.register(Page, PageAdmin)
-#admin.site.register(BlockI18N)
+admin.site.register(BlockI18N)
