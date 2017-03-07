@@ -30,7 +30,7 @@ class BlockAdmin(admin.ModelAdmin):
         js = ['/static/tinymce/js/tinymce/tinymce.min.js', '/static/tinymce/js/tinymce/jquery.tinymce.init.js']
 
     def get_content(self, obj):
-        return mark_safe(obj.content)
+        return mark_safe(obj.body)
 
 
 class InlineBlockAdmin(admin.TabularInline):

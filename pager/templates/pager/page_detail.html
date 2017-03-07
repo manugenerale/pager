@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+    {% for block in blocks %}
+       {% if block.title }}{{ block.title }}{% endif %}
+       {% if block.body }}{{ block.body }}{% endif %}
+    {% endblock %}
+{% endblock %}
+
